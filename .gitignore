@@ -1,0 +1,30 @@
+# Build artifacts
+/build/
+*.tar.gz
+llvm.sh
+
+# Installation directory contents
+/bin/
+/lib/
+/include/
+/share/
+/src/
+
+# Temporary files
+*.tmp
+*.log
+*.swp
+
+# OS generated files
+.DS_Store
+Thumbs.db
+
+# IDE/Editor files
+.idea/
+.vscode/
+*.sublime-workspace
+*.sublime-project
+
+# Environment files
+.env
+.env.local
