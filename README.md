@@ -66,6 +66,6 @@ sudo ./install.sh -h
 
 ### Authors
 
-This installer script was created by **Miikka Maki** (23.10.2026) with assistance from **Mistral Vibe**.
+This installer script was created by **Miikka Mäki** (23.10.2026) with assistance from **Mistral Vibe**.
 
 ---
