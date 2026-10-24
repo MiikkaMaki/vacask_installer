@@ -11,7 +11,7 @@ help_f() {
     cat <<EOF
 Local installation script for OpenVAF-Reloaded and VACASK
 Based on the Containerfile from ubuntu24_image
-Tested on Ubuntu 24.04
+Tested on Ubuntu 24.04 and 26.04
 
 Usage: sudo ./vacask_script.sh [OPTIONS]
 
@@ -72,9 +72,9 @@ if [ "$(id -u)" -ne 0 ]; then
     exit 1
 fi
 
-# Verify we're on Ubuntu 24.04 or compatible
-if ! grep -q '24.04' /etc/os-release && ! grep -q '24.04' /usr/lib/os-release; then
-    echo "WARNING: This script is designed for Ubuntu 24.04" >&2
+# Verify we're on Ubuntu 24.04 or 26.04 or compatible
+if ! grep -q '24.04' /etc/os-release && ! grep -q '24.04' /usr/lib/os-release && ! grep -q '26.04' /etc/os-release && ! grep -q '26.04' /usr/lib/os-release; then
+    echo "WARNING: This script is designed for Ubuntu 24.04 and 26.04" >&2
     read -p "Continue anyway? [y/N] " -n 1 -r
     echo
     if [[ ! $REPLY =~ ^[Yy]$ ]]; then

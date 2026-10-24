@@ -3,7 +3,7 @@
 Local installation script for **OpenVAF-Reloaded** and **VACASK** tools.
 
 Based on the Containerfile from `ubuntu24_image`.
-Tested on **Ubuntu 24.04**.
+Tested on **Ubuntu 24.04 and Ubuntu 26.04**.
 
 ## Overview
 
