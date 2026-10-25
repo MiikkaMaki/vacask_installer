@@ -60,6 +60,8 @@ This repository also offers `setup-process.sh` script, that runs necessary comma
 At the moment, this script offers support for
 - IHP sg13g2
 
+To use this script, set your `$PDK_ROOT` environment variable to point to your PDK installation directory, and then `./setup-process.sh`
+
 ## Credits
 
 ### Tools
