@@ -59,8 +59,9 @@ This repository also offers `setup-process.sh` script, that runs necessary comma
 
 At the moment, this script offers support for
 - IHP sg13g2
+- GF180MCU
 
-To use this script, set your `$PDK_ROOT` environment variable to point to your PDK installation directory, and then `./setup-process.sh`
+To use this script, set your `$PDK_ROOT` environment variable to point to your PDK installation directory, and then `./setup-process.sh`. The script will then ask you which process you would like to setup.
 
 ## Credits
 

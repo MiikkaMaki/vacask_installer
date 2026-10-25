@@ -5,7 +5,8 @@
 
 # List of available processes (module names without .py extension)
 PROCESSES=(
-    "sg13g2tovc"
+    "sg13g2"
+    "gf180"
 )
 
 # Function to display the menu
@@ -130,11 +131,14 @@ if ! command -v python3 &> /dev/null; then
     exit 1
 fi
 
+# Selected script
+selected_script="${selected_process}tovc"
+
 # Run the selected process
-echo "Running: PYTHONPATH=$PYTHONPATH python3 -m vacask.$selected_process --openvaf-options --target_cpu generic"
+echo "Running: PYTHONPATH=$PYTHONPATH python3 -m vacask.$selected_script --openvaf-options --target_cpu generic"
 echo ""
 
-PYTHONPATH="$PYTHONPATH" python3 -m vacask.$selected_process --openvaf-options --target_cpu generic
+PYTHONPATH="$PYTHONPATH" python3 -m vacask.$selected_script --openvaf-options --target_cpu generic
 
 # Check the exit status
 exit_status=$?
