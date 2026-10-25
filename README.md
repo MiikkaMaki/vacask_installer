@@ -53,6 +53,13 @@ sudo ./install.sh -h
 - Root access (for apt-get)
 - Internet connection (for downloading dependencies)
 
+## Process setup
+
+This repository also offers `setup-process.sh` script, that runs necessary commands for process to setup it's VACASK files. This includes cornerfiles, editing the xschem symbols to allow netlisting VACASK, compiling simulation models, and other necessities.
+
+At the moment, this script offers support for
+- IHP sg13g2
+
 ## Credits
 
 ### Tools
