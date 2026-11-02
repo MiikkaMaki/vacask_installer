@@ -5,6 +5,7 @@ set -euo pipefail
 # Default values
 BUILD_DIR="$(pwd)/build"
 INSTALL_PREFIX=""
+REBUILD_VACASK=false
 
 # Help function
 help_f() {
@@ -18,12 +19,14 @@ Usage: sudo ./vacask_script.sh [OPTIONS]
 Options:
   --build-dir DIR, -b DIR       Specify build directory (default: <pwd>/build)
   --install-prefix DIR, -p DIR  Specify installation prefix (default: <BUILD_DIR>/..)
+  --rebuild, -r                 Rebuild VACASK from source (git pull and rebuild)
   --help, -h                    Show this help message
 
 Examples:
   sudo ./vacask_script.sh
   sudo ./vacask_script.sh --build-dir /tmp/vacask-build
   sudo ./vacask_script.sh -b /my/build/dir -p /my/install/dir
+  sudo ./vacask_script.sh --rebuild
 
 Written by Miikka Mäki, 23.10.2026
 Vibe coded with Mistral Vibe
@@ -41,6 +44,10 @@ while [[ $# -gt 0 ]]; do
         --install-prefix|-p)
             INSTALL_PREFIX="$2"
             shift 2
+            ;;
+        --rebuild|-r)
+            REBUILD_VACASK=true
+            shift
             ;;
         --help|-h)
             help_f
@@ -213,7 +220,28 @@ else
 fi
 
 # Step 7/7: Clone and build VACASK
-if [ -x "$INSTALL_PREFIX/bin/vacask" ]; then
+if [ "$REBUILD_VACASK" = true ]; then
+    echo ""
+    echo "Step 7/7: Rebuilding VACASK from source..."
+    if [ -d "$VACASK_SRC" ]; then
+        cd "$VACASK_SRC"
+        git pull
+    else
+        cd "$BUILD_DIR"
+        git clone https://codeberg.org/arpadbuermen/VACASK.git "$VACASK_SRC"
+        cd "$VACASK_SRC"
+    fi
+    rm -rf "$VACASK_SRC/build"
+    mkdir -p build
+    cmake -G "Unix Makefiles" -B build -DCMAKE_BUILD_TYPE=Release \
+        -DOPENVAF_DIR="$OPENVAF_SRC/target/release" \
+        -DBoost_ROOT="$BOOST_SRC/stage" \
+        -DSuperluMT_DIR="$SUPERLU_SRC" \
+        -DCADNIP_PARSERS=ON \
+        -DCMAKE_INSTALL_PREFIX="$INSTALL_PREFIX"
+    cmake --build build
+    cmake --install build --prefix "$INSTALL_PREFIX"
+elif [ -x "$INSTALL_PREFIX/bin/vacask" ]; then
     echo ""
     echo "Step 7/7: VACASK already built and installed. Skipping."
 else
