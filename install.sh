@@ -5,7 +5,8 @@ set -euo pipefail
 # Default values
 BUILD_DIR="$(pwd)/build"
 INSTALL_PREFIX=""
-REBUILD_VACASK=false
+REBUILD_ALL=false
+REBUILD_TARGETS=()
 
 # Help function
 help_f() {
@@ -19,7 +20,8 @@ Usage: sudo ./vacask_script.sh [OPTIONS]
 Options:
   --build-dir DIR, -b DIR       Specify build directory (default: <pwd>/build)
   --install-prefix DIR, -p DIR  Specify installation prefix (default: <BUILD_DIR>/..)
-  --rebuild, -r                 Rebuild VACASK from source (git pull and rebuild)
+  --rebuild [TARGET], -r [TARGET]  Rebuild specific software or all (targets: llvm, rust, openvaf, boost, superlu, vacask, all)
+  --rebuild-all                 Rebuild all software from source
   --help, -h                    Show this help message
 
 Examples:
@@ -27,6 +29,8 @@ Examples:
   sudo ./vacask_script.sh --build-dir /tmp/vacask-build
   sudo ./vacask_script.sh -b /my/build/dir -p /my/install/dir
   sudo ./vacask_script.sh --rebuild
+  sudo ./vacask_script.sh --rebuild vacask
+  sudo ./vacask_script.sh --rebuild-all
 
 Written by Miikka Mäki, 23.10.2026
 Vibe coded with Mistral Vibe
@@ -46,7 +50,16 @@ while [[ $# -gt 0 ]]; do
             shift 2
             ;;
         --rebuild|-r)
-            REBUILD_VACASK=true
+            if [[ -n ${2:-} && ! $2 =~ ^- ]]; then
+                REBUILD_TARGETS+=("$2")
+                shift 2
+            else
+                REBUILD_TARGETS+=("vacask")
+                shift
+            fi
+            ;;
+        --rebuild-all)
+            REBUILD_ALL=true
             shift
             ;;
         --help|-h)
@@ -64,6 +77,62 @@ done
 if [ -z "$INSTALL_PREFIX" ]; then
     INSTALL_PREFIX="$(dirname "$BUILD_DIR")"
 fi
+
+# Process rebuild targets
+# Initialize individual rebuild flags
+REBUILD_LLVM=false
+REBUILD_RUST=false
+REBUILD_OPENVAF=false
+REBUILD_BOOST=false
+REBUILD_SUPERLU=false
+REBUILD_VACASK=false
+
+# If --rebuild-all is set, rebuild everything
+if [ "$REBUILD_ALL" = true ]; then
+    REBUILD_LLVM=true
+    REBUILD_RUST=true
+    REBUILD_OPENVAF=true
+    REBUILD_BOOST=true
+    REBUILD_SUPERLU=true
+    REBUILD_VACASK=true
+fi
+
+# Process specific rebuild targets from --rebuild [TARGET]
+for target in "${REBUILD_TARGETS[@]+${REBUILD_TARGETS[@]}}"; do
+    case "$target" in
+        llvm)
+            REBUILD_LLVM=true
+            ;;
+        rust)
+            REBUILD_RUST=true
+            ;;
+        openvaf)
+            REBUILD_OPENVAF=true
+            ;;
+        boost)
+            REBUILD_BOOST=true
+            ;;
+        superlu)
+            REBUILD_SUPERLU=true
+            ;;
+        vacask)
+            REBUILD_VACASK=true
+            ;;
+        all)
+            REBUILD_LLVM=true
+            REBUILD_RUST=true
+            REBUILD_OPENVAF=true
+            REBUILD_BOOST=true
+            REBUILD_SUPERLU=true
+            REBUILD_VACASK=true
+            ;;
+        *)
+            echo "ERROR: Unknown rebuild target: $target" >&2
+            echo "Valid targets: llvm, rust, openvaf, boost, superlu, vacask, all" >&2
+            exit 1
+            ;;
+    esac
+done
 
 # Resolve to absolute paths to avoid issues with relative paths
 if [[ "$BUILD_DIR" != /* ]]; then
@@ -141,7 +210,7 @@ apt-get install -y \
 export PATH="/root/.cargo/bin:$PATH"
 
 # Step 2/7: Install LLVM 21
-if [ ! -f /usr/lib/llvm-21/bin/clang++ ] || [ ! -f /usr/lib/llvm-21/bin/clang ]; then
+if [ "$REBUILD_LLVM" = true ] || [ ! -f /usr/lib/llvm-21/bin/clang++ ] || [ ! -f /usr/lib/llvm-21/bin/clang ]; then
     echo ""
     echo "Step 2/7: Installing LLVM 21..."
     cd "$BUILD_DIR"
@@ -158,7 +227,7 @@ else
 fi
 
 # Step 3/7: Install Rust toolchain
-if ! command_exists cargo || ! command_exists rustc; then
+if [ "$REBUILD_RUST" = true ] || ! command_exists cargo || ! command_exists rustc; then
     echo ""
     echo "Step 3/7: Installing Rust toolchain..."
     curl --proto '=https' --tlsv1.2 -sSf https://sh.rustup.rs | sh -s -- -y
@@ -173,10 +242,7 @@ else
 fi
 
 # Step 4/7: Clone and build OpenVAF-Reloaded
-if [ -x "$INSTALL_PREFIX/bin/openvaf" ] && "$INSTALL_PREFIX/bin/openvaf" --version >/dev/null 2>&1; then
-    echo ""
-    echo "Step 4/7: OpenVAF-Reloaded already built and installed. Skipping."
-else
+if [ "$REBUILD_OPENVAF" = true ] || [ ! -x "$INSTALL_PREFIX/bin/openvaf" ] || ! "$INSTALL_PREFIX/bin/openvaf" --version >/dev/null 2>&1; then
     echo ""
     echo "Step 4/7: Building OpenVAF-Reloaded..."
     rm -rf "$OPENVAF_SRC"
@@ -186,13 +252,13 @@ else
     ./build.sh --release
     install -Dm755 target/release/openvaf-r "$INSTALL_PREFIX/bin/openvaf"
     echo "OpenVAF installed: $($INSTALL_PREFIX/bin/openvaf --version)"
+else
+    echo ""
+    echo "Step 4/7: OpenVAF-Reloaded already built and installed. Skipping."
 fi
 
 # Step 5/7: Install Boost 1.88.0
-if [ -d "$BOOST_SRC/stage/lib" ] && [ -f "$BOOST_SRC/stage/lib/libboost_filesystem.a" ] && [ -f "$BOOST_SRC/stage/lib/libboost_system.a" ] && [ -f "$BOOST_SRC/stage/lib/libboost_thread.a" ]; then
-    echo ""
-    echo "Step 5/7: Boost 1.88.0 already built. Skipping."
-else
+if [ "$REBUILD_BOOST" = true ] || ! { [ -d "$BOOST_SRC/stage/lib" ] && [ -f "$BOOST_SRC/stage/lib/libboost_filesystem.a" ] && [ -f "$BOOST_SRC/stage/lib/libboost_system.a" ] && [ -f "$BOOST_SRC/stage/lib/libboost_thread.a" ]; }; then
     echo ""
     echo "Step 5/7: Building Boost 1.88.0..."
     rm -rf "$BOOST_SRC" "$BOOST_TAR"
@@ -202,13 +268,13 @@ else
     cd "$BOOST_SRC"
     ./bootstrap.sh
     ./b2 --with-filesystem --with-process --with-asio link=static toolset=gcc
+else
+    echo ""
+    echo "Step 5/7: Boost 1.88.0 already built. Skipping."
 fi
 
 # Step 6/7: Install SuperLU_MT 4.0.0
-if [ -d "$SUPERLU_SRC" ] && [ -f "$SUPERLU_SRC/lib/libsuperlu_mt.a" ]; then
-    echo ""
-    echo "Step 6/7: SuperLU_MT 4.0.0 already built. Skipping."
-else
+if [ "$REBUILD_SUPERLU" = true ] || ! { [ -d "$SUPERLU_SRC" ] && [ -f "$SUPERLU_SRC/lib/libsuperlu_mt.a" ]; }; then
     echo ""
     echo "Step 6/7: Building SuperLU_MT 4.0.0..."
     rm -rf "$SUPERLU_SRC" "$SUPERLU_TAR"
@@ -217,6 +283,9 @@ else
     tar -xzf "$SUPERLU_TAR" -C "$BUILD_DIR"
     cd "$SUPERLU_SRC"
     make
+else
+    echo ""
+    echo "Step 6/7: SuperLU_MT 4.0.0 already built. Skipping."
 fi
 
 # Step 7/7: Clone and build VACASK
@@ -241,25 +310,27 @@ if [ "$REBUILD_VACASK" = true ]; then
         -DCMAKE_INSTALL_PREFIX="$INSTALL_PREFIX"
     cmake --build build
     cmake --install build --prefix "$INSTALL_PREFIX"
-elif [ -x "$INSTALL_PREFIX/bin/vacask" ]; then
-    echo ""
-    echo "Step 7/7: VACASK already built and installed. Skipping."
 else
-    echo ""
-    echo "Step 7/7: Building and installing VACASK..."
-    rm -rf "$VACASK_SRC"
-    cd "$BUILD_DIR"
-    git clone https://codeberg.org/arpadbuermen/VACASK.git "$VACASK_SRC"
-    cd "$VACASK_SRC"
-    mkdir -p build
-    cmake -G "Unix Makefiles" -B build -DCMAKE_BUILD_TYPE=Release \
-        -DOPENVAF_DIR="$OPENVAF_SRC/target/release" \
-        -DBoost_ROOT="$BOOST_SRC/stage" \
-        -DSuperluMT_DIR="$SUPERLU_SRC" \
-        -DCADNIP_PARSERS=ON \
-        -DCMAKE_INSTALL_PREFIX="$INSTALL_PREFIX"
-    cmake --build build
-    cmake --install build --prefix "$INSTALL_PREFIX"
+    if [ -x "$INSTALL_PREFIX/bin/vacask" ]; then
+        echo ""
+        echo "Step 7/7: VACASK already built and installed. Skipping."
+    else
+        echo ""
+        echo "Step 7/7: Building and installing VACASK..."
+        rm -rf "$VACASK_SRC"
+        cd "$BUILD_DIR"
+        git clone https://codeberg.org/arpadbuermen/VACASK.git "$VACASK_SRC"
+        cd "$VACASK_SRC"
+        mkdir -p build
+        cmake -G "Unix Makefiles" -B build -DCMAKE_BUILD_TYPE=Release \
+            -DOPENVAF_DIR="$OPENVAF_SRC/target/release" \
+            -DBoost_ROOT="$BOOST_SRC/stage" \
+            -DSuperluMT_DIR="$SUPERLU_SRC" \
+            -DCADNIP_PARSERS=ON \
+            -DCMAKE_INSTALL_PREFIX="$INSTALL_PREFIX"
+        cmake --build build
+        cmake --install build --prefix "$INSTALL_PREFIX"
+    fi
 fi
 
 # Verify installation
